@@ -7,13 +7,15 @@ var express = require('express');
 var app = express();
 var mongodb = require('mongodb');
 var MongoClient = mongodb.MongoClient;
-var url = 'mongodb://<dbuser>:<dbpassword>@ds153113.mlab.com:53113/fcc_urldb';  
 var validUrl = require('valid-url');
+var dotenv = require('dotenv');
+
+dotenv.config();
+var url = process.env.MONGOLAB_URI;
 
 app.use('/public', express.static(process.cwd() + '/public'));
 
-
-  
+var APP_URL = 'https://receptive-mine.glitch.me/';  
 app.route('/')
     .get(function(req, res) {
 		  res.sendFile(process.cwd() + '/views/index.html');
@@ -22,22 +24,30 @@ app.route('/')
 //receives basic url and responds with 'shortened' url in JSON
 app.route('/new/:newUrl(*|/)')
     .get(function(req, res) {
-    var response = '';
+    var response = {};
 		  //Validate Input URL
     if (validUrl.isUri(req.params.newUrl)){
-        response = req.params.newUrl + ' Looks like an URI';
+    //save url to db
+    MongoClient.connect(url, function(err, db) {
+      if (err) throw err;
+    
+      db.collection('urls').count( function (error, count){
+        if (error) throw error;
+        var myobj = { "_id": count+1,"original_url": req.params.newUrl };
+        db.collection("urls").insertOne( myobj, function(err, result) {
+          if (err) throw err;
+          response = { "original_url":req.params.newUrl, "short_url":APP_URL + (count+1).toString() }
+          db.close();
+          res.json(response);
+        });
+      });
+    });
     } else {
         response = req.params.newUrl.toString() + ' Not a URI';
+        res.json(response);
     }
-      //Connect to DB
-        //add url and get ID
-        //save ID
-        //close DB connect
-      //generate JSON 
-        //Example: { "original_url":"http://foo.com:80", "short_url":"https://little-url.herokuapp.com/8170" }
-      //respond JSON
-    res.json(response);
-    })
+    
+    });
 
 //redirects to URL of previously shortened ID
 app.route('/:urlId')
@@ -63,6 +73,8 @@ app.use(function(err, req, res, next) {
       .send(err.message || 'SERVER ERROR');
   }  
 })
+
+
 
 app.listen(process.env.PORT, function () {
   console.log('Node.js listening ...');
