@@ -24,48 +24,58 @@ app.route('/')
 //receives basic url and responds with 'shortened' url in JSON
 app.route('/new/:newUrl(*|/)')
     .get(function(req, res) {
-    var response = {};
-		//Validate Input URL
-    if (validUrl.isUri(req.params.newUrl)){
-    //save url to db
-    MongoClient.connect(url, function(err, db) {
-      if (err) throw err;
-    
-      db.collection('urls').count( function (error, count){
-        if (error) throw error;
-        var myobj = { "_id": count+1,"original_url": req.params.newUrl };
-        db.collection("urls").insertOne( myobj, function(err, result) {
-          if (err) throw err;
-          response = { "original_url":req.params.newUrl, "short_url":APP_URL + (count+1).toString() }
-          db.close();
-          res.json(response);
-        });
-      });
-    });
-    } else {
-        response = req.params.newUrl.toString() + ' Not a URI';
-        res.json(response);
-    }
-    
+        var response = {};
+        //Validate Input URL
+        if (validUrl.isUri(req.params.newUrl)) {
+            //save url to db
+            MongoClient.connect(url, function(err, db) {
+                if (err) throw err;
+
+                db.collection('urls').count(function(error, count) {
+                    if (error) throw error;
+                    var myobj = {
+                        "_id": count + 1,
+                        "original_url": req.params.newUrl
+                    };
+                    db.collection("urls").insertOne(myobj, function(err, result) {
+                        if (err) throw err;
+                        response = {
+                            "original_url": req.params.newUrl,
+                            "short_url": APP_URL + (count + 1).toString()
+                        }
+                        db.close();
+                        res.json(response);
+                    });
+                });
+            });
+        } else {
+            response = req.params.newUrl.toString() + ' Not a URI';
+            res.json(response);
+        }
+
     });
 
 //redirects to URL of previously shortened ID
 app.route('/:urlId')
     .get(function(req, res) {
-      MongoClient.connect(url, function(err, db) {
-        if (err) throw err;
-         var id = parseInt(req.params.urlId);
-        db.collection("urls").findOne({ _id: id }, function(err, result) {
-          if (err) throw err;
-          db.close();
-          if (result){
-            res.redirect(result.original_url);
-          }else{
-            res.json({ "Error":"Could not locate URL with ID: " + req.params.urlId})
-          }
-          db.close();
-        });
-      })
+        MongoClient.connect(url, function(err, db) {
+            if (err) throw err;
+            var id = parseInt(req.params.urlId);
+            db.collection("urls").findOne({
+                _id: id
+            }, function(err, result) {
+                if (err) throw err;
+                db.close();
+                if (result) {
+                    res.redirect(result.original_url);
+                } else {
+                    res.json({
+                        "Error": "Could not locate URL with ID: " + req.params.urlId
+                    })
+                }
+                db.close();
+            });
+        })
     })
 
 // Respond not found to all the wrong routes
