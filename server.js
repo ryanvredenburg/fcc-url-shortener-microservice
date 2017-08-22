@@ -25,7 +25,7 @@ app.route('/')
 app.route('/new/:newUrl(*|/)')
     .get(function(req, res) {
     var response = {};
-		  //Validate Input URL
+		//Validate Input URL
     if (validUrl.isUri(req.params.newUrl)){
     //save url to db
     MongoClient.connect(url, function(err, db) {
@@ -52,11 +52,20 @@ app.route('/new/:newUrl(*|/)')
 //redirects to URL of previously shortened ID
 app.route('/:urlId')
     .get(function(req, res) {
-      //Connect to DB
-        //check for ID
-      //close DB connect
-      //redirect or return error
-		  res.sendFile(process.cwd() + '/views/index.html');
+      MongoClient.connect(url, function(err, db) {
+        if (err) throw err;
+         var id = parseInt(req.params.urlId);
+        db.collection("urls").findOne({ _id: id }, function(err, result) {
+          if (err) throw err;
+          db.close();
+          if (result){
+            res.redirect(result.original_url);
+          }else{
+            res.json({ "Error":"Could not locate URL with ID: " + req.params.urlId})
+          }
+          db.close();
+        });
+      })
     })
 
 // Respond not found to all the wrong routes
